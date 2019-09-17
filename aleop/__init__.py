@@ -7,7 +7,7 @@ import os.path
 import tensorflow as tf
 
 _ale_module = tf.load_op_library(
-    os.path.join(tf.resource_loader.get_data_files_path(),
+    os.path.join('/home/francis/dev/tf-ale-op/aleop',
                  'aleop.so'))
 
 def _game_dir():

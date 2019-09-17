@@ -91,7 +91,7 @@ class AleOp : public OpKernel {
     }
 
     bool done = ale_.game_over();
-    ale_.getScreenRGB(screen_buff);
+    // ale_.getScreenRGB(screen_buff);
 
     if(done) {
       ale_.reset_game();
@@ -114,8 +114,9 @@ class AleOp : public OpKernel {
 
     output_r(0) = r;
     output_d(0) = done;
-    std::copy_n(screen_buff.begin(), h * w * 3,
-		output_s.data()); // get rid of copy?
+    ale_.getScreenRGB(output_s.data());
+    //std::copy_n(screen_buff.begin(), h * w * 3,
+		//output_s.data()); // get rid of copy?
   }
 
 private:
