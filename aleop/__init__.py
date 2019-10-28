@@ -14,6 +14,6 @@ def _game_dir():
 def get_game_path(game_name):
     return os.path.join(_game_dir(), game_name) + ".bin"
 
-def ale(action, max_episode_length, game_name, **kwargs):
-    return _ale_module.ale(action, max_episode_length, get_game_path(game_name), **kwargs)
+def ale(action, reset, max_episode_length, game_name, **kwargs):
+    return _ale_module.ale(action, reset, max_episode_length, get_game_path(game_name), **kwargs)
 

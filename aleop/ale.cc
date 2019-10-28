@@ -17,6 +17,7 @@ REGISTER_OP("Ale")
     .Attr("seed: int = 0")
     .Attr("seed2: int = 0")
     .Input("action: int32")
+    .Input("reset: bool")
     .Input("max_episode_len: int32")
     .Output("reward: float")
     .Output("done: bool")
@@ -78,10 +79,15 @@ class AleOp : public OpKernel {
     OP_REQUIRES(context, legalActions_.find(action) != legalActions_.end(),
                 errors::InvalidArgument("Action is out of legal actions range."));
 
-    const Tensor& max_episode_length_tensor = context->input(1);
+    const Tensor& max_episode_length_tensor = context->input(2);
     OP_REQUIRES(context, TensorShapeUtils::IsScalar(max_episode_length_tensor.shape()),
                 errors::InvalidArgument("Ale expects scalar maximum episode length."));
     auto max_episode_length = max_episode_length_tensor.scalar<int32>()(0);
+
+    const Tensor& reset_tensor = context->input(1);
+    OP_REQUIRES(context, TensorShapeUtils::IsScalar(reset_tensor.shape()),
+                errors::InvalidArgument("Ale expects scalar reset."));
+    auto should_reset = reset_tensor.scalar<int32>()(0);
 
     const int w = ale_.getScreen().width();
     const int h = ale_.getScreen().height();
@@ -89,6 +95,15 @@ class AleOp : public OpKernel {
     auto local_gen = generator_.ReserveSamples32(1);
     random::SimplePhilox random(&local_gen);
     int to_repeat = frameskip_min_ + random.Uniform(frameskip_max_ - frameskip_min_);
+
+    if(should_reset) {
+      ale_.reset_game();
+      counter_ = 0;
+      int no_ops = random.Uniform(30);
+      for (int i = 0; i < no_ops; i++) {
+          ale_.act((Action) 0);
+      }
+    }
 
     float r = 0.0;
     for(;to_repeat > 0; --to_repeat){
