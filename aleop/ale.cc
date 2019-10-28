@@ -17,6 +17,7 @@ REGISTER_OP("Ale")
     .Attr("seed: int = 0")
     .Attr("seed2: int = 0")
     .Input("action: int32")
+    .Input("max_episode_len: int32")
     .Output("reward: float")
     .Output("done: bool")
     .Output("screen: uint8")
@@ -77,9 +78,13 @@ class AleOp : public OpKernel {
     OP_REQUIRES(context, legalActions_.find(action) != legalActions_.end(),
                 errors::InvalidArgument("Action is out of legal actions range."));
 
+    const Tensor& max_episode_length_tensor = context->input(1);
+    OP_REQUIRES(context, TensorShapeUtils::IsScalar(max_episode_length_tensor.shape()),
+                errors::InvalidArgument("Ale expects scalar maximum episode length."));
+    auto max_episode_length = max_episode_length_tensor.scalar<int32>()(0);
+
     const int w = ale_.getScreen().width();
     const int h = ale_.getScreen().height();
-    std::vector<unsigned char> screen_buff;
 
     auto local_gen = generator_.ReserveSamples32(1);
     random::SimplePhilox random(&local_gen);
@@ -89,12 +94,17 @@ class AleOp : public OpKernel {
     for(;to_repeat > 0; --to_repeat){
       r += ale_.act(action);
     }
+    counter_ += 1;
 
-    bool done = ale_.game_over();
-    // ale_.getScreenRGB(screen_buff);
+    bool done = ale_.game_over() || (max_episode_length > 0 && counter_ > max_episode_length);
 
     if(done) {
       ale_.reset_game();
+      counter_ = 0;
+      int no_ops = random.Uniform(30);
+      for (int i = 0; i < no_ops; i++) {
+          ale_.act((Action) 0);
+      }
     }
 
     Tensor* reward_tensor = NULL;
@@ -112,11 +122,15 @@ class AleOp : public OpKernel {
     auto output_d = done_tensor->scalar<bool>();
     auto output_s = screen_tensor->flat<unsigned char>();
 
+    //std::vector<unsigned char> screen_buff(output_s.data(), output_s.data() + h * w * 3);
+    std::vector<unsigned char> screen_buff;
+    ale_.getScreenRGB(screen_buff);
+
     output_r(0) = r;
     output_d(0) = done;
-    ale_.getScreenRGB(output_s.data());
-    //std::copy_n(screen_buff.begin(), h * w * 3,
-		//output_s.data()); // get rid of copy?
+    //ale_.getScreenRGB(output_s.data());
+    std::copy_n(screen_buff.begin(), h * w * 3,
+		output_s.data()); // get rid of copy?
   }
 
 private:
@@ -125,6 +139,7 @@ private:
   std::string rom_file_;
   int frameskip_min_;
   int frameskip_max_;
+  int counter_;
   GuardedPhiloxRandom generator_;
 };
 
