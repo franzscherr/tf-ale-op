@@ -14,7 +14,7 @@ ale_path = args.ale_path
 if ale_path == '':
     print('[ ! must set ale_path ]')
 
-cmd = f'g++ -std=c++11 -shared ale.cc -o aleop.so -fPIC -I {tf_inc} -O2 -D_GLIBCXX_USE_CXX11_ABI=1 -L{tf_lib} -ltensorflow_framework {cflags} {lflags} -I{ale_path}/include -L{ale_path}/lib -lale'
+cmd = f'g++ -std=c++11 -shared ale.cc -o aleop.so -fPIC -I {tf_inc} -O2 -D_GLIBCXX_USE_CXX11_ABI=1 -L{tf_lib} {cflags} {lflags} -I{ale_path}/include -L{ale_path}/lib -lale'
 print(f'- compiling using command: {cmd}')
 res = sp.check_call(cmd, shell=True)
 if res == 0:
